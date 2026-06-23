@@ -1,0 +1,8 @@
+strategy research -> hypothesis testing -> deploy -> compare
+
+
+
+- Needs to minimize/avoid survivorship bias for better generalisation.
+- Rationalise the results of the comparisons by using Bootstrapping to get CI of Share Ratio for each strat.
+- Study Hansen's SPA test and Lopez de Prado's DSR methods. 
+- Apply vectorisation to deal with large size of data.
