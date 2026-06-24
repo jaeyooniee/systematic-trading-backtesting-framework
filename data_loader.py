@@ -10,18 +10,20 @@ import pandas as pd
 from fredapi import Fred
 import matplotlib.pyplot as plt
 
-ticker = input("INPUT TICKER = ")
-price_data = yf.download(ticker, start="2015-01-01", end="2019-12-31", auto_adjust=True)
+FRED_API_KEY = "4d956eea01967253c50032abe3cf6091"
+fred = Fred(api_key=FRED_API_KEY)
 
-fred = Fred(api_key='4d956eea01967253c50032abe3cf6091')
+TBILL = 'DTB3'
 
-tbill_data = fred.get_series('DTB3', observation_start='2015-01-01', observation_end='2019-12-31')
-tbill_info = fred.get_series_info('DTB3')
+def sync_date(ticker, start_date='2015-01-01', end_date='2019-12-31'):
+    price_data = yf.download(ticker, start=start_date, end=end_date, auto_adjust=True)
 
-print(tbill_info['title'])
+    rf_data = fred.get_series(TBILL, observation_start=start_date, observation_end=end_date)
 
-df = pd.DataFrame({'DTB3', tbill_data})
-df = df.dropna()
-df.plot()
+    price_df = price_data[['Close']]
+    price_df.index = pd.to_datetime(price_df.index)
+    price_df.index = price_df.index.normalize()
 
-plt.show()
+    print(price_df)
+
+sync_date("AAPL")
