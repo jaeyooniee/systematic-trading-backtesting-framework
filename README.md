@@ -7,3 +7,4 @@
 
   I chose **yfinance** since polygon.io was quite expensive for me to get data sources although it offers nicely cleaned dataset. 
   I needed adjusted prices as well as OHLCV!
+   
