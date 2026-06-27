@@ -3,7 +3,7 @@ import numpy as np
 
 
 def safe_divide(numerator, denominator) -> pd.Series:
-    return numerator / denominator if denominator != 0 else np.nan
+    return numerator / denominator.replace(0, np.nan)
 
 
 def stateful_signal(entry_condition, exit_condition):
