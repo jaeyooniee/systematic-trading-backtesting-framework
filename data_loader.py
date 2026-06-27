@@ -1,20 +1,22 @@
 """
 Very good description about How to use FredAPI on 'https://mortada.net/python-api-for-fred.html'
-Currently, the file is more like getting familiar with the APIs.
 
 """
 
 import yfinance as yf
 import pandas as pd
 from fredapi import Fred
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
-FRED_API_KEY = "4d956eea01967253c50032abe3cf6091"     # FRED requires personal key to access the data
+FRED_API_KEY = os.environ["FRED_API_KEY"]     # FRED requires personal key to access the data
 fred = Fred(api_key=FRED_API_KEY)                     # Initialising
 
 TBILL = 'DTB3'                                        # We are using 3-months 
 
-def sync_date(ticker, start_date='2015-01-01', end_date='2019-12-31'):
+def sync_date(ticker, start_date='2005-01-01', end_date='2025-01-01'):
     price_data = yf.download(ticker, start=start_date, end=end_date, auto_adjust=True)  # stores specific ticker's price information within the given time period
     tbill_annual_rate = fred.get_series(TBILL, observation_start=start_date, observation_end=end_date)  # Getting t-bill rate from FRED
 
