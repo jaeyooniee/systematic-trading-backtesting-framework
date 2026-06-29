@@ -59,7 +59,7 @@ the contents.
   independent across days (they are autocorrelated), and this fact should not be neglected.
 - After some research and my experience in IMC Prosperity 4, I found that in this case I would have to use a **block bootstrap** to preserve the temporal continuity of the price series within each period.
 - Moreover, to guard against false positives from multiple comparisons, I researched how to
-  account for that randomness, and found I could use **Holm's correction**.
+  account for that randomness, and found I could use **the Holm correction**.
 
 ### 0.6  Setting Parameters Before Seeing the Results
 Before checking the results of the strategies, I fixed all parameters. 
@@ -71,21 +71,21 @@ Before checking the results of the strategies, I fixed all parameters.
 
 To set block length for block bootstrap, I applied **ACF** and fixed the length to 4. 
 
-[per-pair block length distribution]("C:\Users\comac\Downloads\block_length_distribution.png")
+![per-pair block length distribution](images/block_length_distribution.png)
 
 
 ### 0.7 Realising and Testing
 I did most of my work from scratch, which was my whole plan and idea of this project if I'm honest. 
 The progress was from building data loader to engine, metrics and so on. 
 
-In short, I checked that engine works well by building 'buy & hold' file and simply printed and evaulated the results. 
+In short, I checked that engine works well by building 'buy & hold' file and simply printed and evaluated the results. 
 
-5 selected strategies were explicitly sorted to match the interface (0/1 signal with no shift) and vectorised using numpy for efficiency.
+5 selected strategies were explicitly adjusted to match the interface (0/1 signal with no shift) and vectorised using numpy for efficiency.
 
 ### 0.8 Results
 Most of the results showed 'statistically indistinguishable'. So I wanted to visualise and see the results of backtests. I used histograms (Learned this graph from Stats 1 and DS as well).
 
-'Indistinguishable' doesn not mean it's a failure but this is a valid result for what I have been aiming for this whole framework where I wanted to keep statistical accuracy from the start to the end of the project and keep being honest. 
+'Indistinguishable' does not mean it's a failure but this is a valid result for what I have been aiming for this whole framework where I wanted to keep statistical accuracy from the start to the end of the project and keep being honest. 
 
 > What I've learned: I mentioned every reason and sources of my decision among building the framework and even if the results were not close to what I've been expecting, I have not modified the process that I have set before testing. This made the project be a research which can be methodologically defendable. 
 
@@ -95,7 +95,7 @@ Most of the results showed 'statistically indistinguishable'. So I wanted to vis
 
 > If the sharpe ratio of strategy A is higher than that of strategy B, are we able to say that the difference is not a chance but from statistically meaningful results in a high confidence interval?
 
-To answer to this question, I am not only simply comparing sharpe ratio but also applying testing process including bootstrap confidence level and multiple comparation correction.
+To answer this question, I am not only simply comparing sharpe ratio but also applying testing process including bootstrap confidence level and multiple comparison correction.
 
 ---
 
@@ -116,7 +116,7 @@ To answer to this question, I am not only simply comparing sharpe ratio but also
 
 ## 3. Data Layer
 - **Price Data**: yfinance, adjusted OHLC price.
-- **OHLC preservation**: Most of the time I used Close price but I had OHLC saved in cache.
+- **OHLC preservation**: Most of the time I used Close price but I kept the full OHLC (Stochastic and PSAR needed High/Low prices)
 - **Risk-Free rate(rf)**: FRED DTB3 (3-month T-bill)
   - DTB3 uses annualised percentage so it was modified as daily percentage by `rf_daily = rf_annual / 100 / 252` (252-days often refer to 1-year trading days)
 
@@ -132,8 +132,41 @@ Parameters are set to be standard settings of each indicator.
 | 2 | RSI | 14, Entry < 30 / Exit > 70 (stateful) | Mean Reversion (Momentum Oscillator) |
 | 3 | Parabolic SAR | step 0.02 / max 0.2 | Trend (Stateful Recursion) |
 | 4 | Bollinger Band | window 20 / 2 SD | Mean Reversion |
-| 5 | Stochastic Oscillator | 14 / 3 / 3 | Osciallator (Mean Reversion) |
+| 5 | Stochastic Oscillator | 14 / 3 / 3 | Oscillator (Mean Reversion) |
 
-I tried to use as various strategies as possible.
+I tried to use a set of strategies that is as varied as possible.
+
+---
+
+## 5. Engine and Metrics
+
+### Engine (`engine/backtest.py`)
+Engine that forces fair comparison.
+All strategies follow the same rules.
+
+```
+run(prices, signal_fn, rf_daily, cost_pct=0):
+    signal   = signal_fn(prices)           # Each strategy only creates 0/1 signal.
+    position = signal.shift(1)             # Only 1 shift in the engine. 
+    returns  = position * daily_returns    # Signal today, trade the next day
+    returns  = returns - |position.diff()| * cost_pct / 100   # Trade cost (default=0)
+    excess   = returns - rf_daily
+    return returns, excess             
+```
+
+- **`signal.shift(1)` runs only once in engine.** Never shift inside strategy files.
+  Signals are made by close price and trades are made the day after. This prevents the program from looking ahead at future prices. 
+- **`cost_pct` parameter (default=0)** Leave parameter even if the algo does not use it, default value is as mentioned, 0. 
+  - If I want to consider trade costs then it can be easily adapted.
+- **Return Structure**: the engine returns `(returns, excess)`. excess is for Sharpe and Sortino, and raw `returns` are for Calmar. rf conversion from annual to daily is done in data layer and excess calculation is done in engine.
+
+### Indicators (`engine/metrics.py`)
+- **Main Indicator: Annual Sharpe Ratio.** Significance is only checked with Sharpe ratio.
+  - `Sharpe = mean(excess) / std(excess)`. std uses population std to match the calculation in numpy.
+  - `metrics.sharpe()` returns **unannualised raw value**. √252 is multiplied **once outside after building bootstrap CI**.
+- **Sub indicators: Calmar, Sortino.**
+  - I did not use these indicators for significance checks. Just to clarify and check if the winner is solid in other perspectives.
+  - **Calmar gets raw `returns` as inputs**. Max drawdown does not subtract rf. The formula already includes annualisation so we do not multiply √252.
+  - **Sortino gets excess as inputs**, the downside deviation is computed as the RMS over the full period with positive values set to zero (not by extracting only the negative values). The √252 factor is applied externally.
 
 ---
